@@ -32,6 +32,7 @@ jobs:
 
       - name: Extract Assets.car
         run: |
+               cat Assets.car.part* > Assets.car     
           mkdir extracted_assets
           ./acextract_tool -i Assets.car -o extracted_assets
 
