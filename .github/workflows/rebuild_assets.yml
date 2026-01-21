@@ -1,0 +1,53 @@
+name: Rebuild Assets.car
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  rebuild:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install Pillow
+
+      - name: Build acextract
+        run: |
+          git clone https://github.com/flypigz/acextract.git
+          cd acextract
+          swift build -c release
+          cp .build/release/acextract ../acextract_tool
+          cd ..
+
+      - name: Extract Assets.car
+        run: |
+          mkdir extracted_assets
+          ./acextract_tool -i Assets.car -o extracted_assets
+
+      - name: Process Assets (Resize to 1x1)
+        run: |
+          python process_assets.py extracted_assets processed.xcassets
+
+      - name: Compile new Assets.car
+        run: |
+          # We need to provide a target device/platform to actool
+          # Using ios for general compatibility
+          xcrun actool processed.xcassets --compile . --platform iphoneos --minimum-deployment-target 15.0 --app-icon AppIcon --output-partial-info-plist partial.plist
+          # The above command should generate Assets.car in the current directory (overwriting or creating)
+
+      - name: Upload result
+        uses: actions/upload-artifact@v4
+        with:
+          name: Lightweight-Assets-CAR
+          path: Assets.car
